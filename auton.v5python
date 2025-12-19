@@ -1,0 +1,149 @@
+#region VEXcode Generated Robot Configuration
+from vex import *
+import urandom
+import math
+
+# Brain should be defined by default
+brain=Brain()
+
+# Robot configuration code
+leftMotor = Motor(Ports.PORT1, GearSetting.RATIO_18_1, False)
+RightMotor = Motor(Ports.PORT2, GearSetting.RATIO_18_1, True)
+Chain = Motor(Ports.PORT3, GearSetting.RATIO_18_1, False)
+controller_1 = Controller(PRIMARY)
+wheels = Motor(Ports.PORT4, GearSetting.RATIO_18_1, False)
+
+
+# wait for rotation sensor to fully initialize
+wait(30, MSEC)
+
+
+# Make random actually random
+def initializeRandomSeed():
+    wait(100, MSEC)
+    random = brain.battery.voltage(MV) + brain.battery.current(CurrentUnits.AMP) * 100 + brain.timer.system_high_res()
+    urandom.seed(int(random))
+      
+# Set random seed 
+initializeRandomSeed()
+
+
+def play_vexcode_sound(sound_name):
+    # Helper to make playing sounds from the V5 in VEXcode easier and
+    # keeps the code cleaner by making it clear what is happening.
+    print("VEXPlaySound:" + sound_name)
+    wait(5, MSEC)
+
+# add a small delay to make sure we don't print in the middle of the REPL header
+wait(200, MSEC)
+# clear the console to make sure we don't have the REPL in the console
+print("\033[2J")
+
+#endregion VEXcode Generated Robot Configuration
+
+# ------------------------------------------
+# Globals
+# ------------------------------------------
+SPIN_MULT = 5.455
+
+xSpeed = 0
+ySpeed = 0
+chainspeed = 0
+wheelSpeed = 0
+flip=False
+
+# ------------------------------------------
+# Movement Helpers
+# ------------------------------------------
+def stop_helper_():
+    leftMotor.set_velocity(0, PERCENT)
+    RightMotor.set_velocity(0, PERCENT)
+def controller_1buttonX_pressed_callback():
+    global flip
+    flip = not flip
+
+def wait_mils(ms):
+    wait(ms / 1000, SECONDS)
+
+def move_helper_forward(forward=True):
+    speed = 75 if forward else -75
+    leftMotor.set_velocity(speed, PERCENT)
+    RightMotor.set_velocity(speed, PERCENT)
+
+def moveforward_mils(ms):
+    move_helper_forward(True)
+    wait_mils(ms)
+    stop_helper_()
+
+def movebackward_mils(ms):
+    move_helper_forward(False)
+    wait_mils(ms)
+    stop_helper_()
+
+def turnright_degrees(deg):
+    leftMotor.set_velocity(100, PERCENT)
+    RightMotor.set_velocity(-100, PERCENT)
+    wait_mils(deg * SPIN_MULT)
+    stop_helper_()
+
+def turnleft_degrees(deg):
+    leftMotor.set_velocity(-100, PERCENT)
+    RightMotor.set_velocity(100, PERCENT)
+    wait_mils(deg * SPIN_MULT)
+    stop_helper_()
+
+# ------------------------------------------
+# Controller Callbacks
+# ------------------------------------------
+def controller_1axis4Changed_callback_0():
+    global xSpeed
+    xSpeed = controller_1.axis4.position()
+
+def controller_1axis3Changed_callback_0():
+    global ySpeed, wheelSpeed
+    ySpeed = controller_1.axis3.position()
+
+def controller_1axis2Changed_callback_0():
+    global chainspeed, wheelSpeed
+    chainspeed = controller_1.axis2.position()
+    if controller_1.axis2.position()<0:
+        wheelSpeed=90
+    elif controller_1.axis2.position()> 0:
+        wheelSpeed=-90
+    else:
+        wheelSpeed=0
+def drive_func():
+    global xSpeed, ySpeed, flip
+    if flip:
+        leftMotor.set_velocity(-ySpeed + xSpeed, PERCENT)
+        RightMotor.set_velocity(-ySpeed - xSpeed, PERCENT)
+    else:
+        leftMotor.set_velocity(ySpeed + xSpeed, PERCENT)
+        RightMotor.set_velocity(ySpeed - xSpeed, PERCENT)
+
+
+
+# ------------------------------------------
+# Event Bindings
+# ------------------------------------------
+controller_1.axis4.changed(controller_1axis4Changed_callback_0)
+controller_1.axis3.changed(controller_1axis3Changed_callback_0)
+controller_1.axis2.changed(controller_1axis2Changed_callback_0)
+controller_1.buttonX.pressed(controller_1buttonX_pressed_callback)
+# ------------------------------------------
+# Driver Control Loop
+# ------------------------------------------
+leftMotor.spin(FORWARD)
+RightMotor.spin(FORWARD)
+Chain.spin(FORWARD)
+wheels.spin(FORWARD)
+
+while True:
+    
+    drive_func()
+
+    # Chain + wheels
+    Chain.set_velocity(chainspeed, PERCENT)
+    wheels.set_velocity(wheelSpeed, PERCENT)
+
+    wait(20, MSEC)
